@@ -1,30 +1,34 @@
-# Terraform Module Template
+# tf-atom-apigateway-domain-name-aws
 
-<!-- Badges: Update REPO_OWNER/REPO_NAME after creating from template -->
-[![CI](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![Release](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/auto-release.yml/badge.svg)](../../actions/workflows/auto-release.yml)
-[![CodeQL](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
-[![Changelog](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/changelog.yml/badge.svg)](../../actions/workflows/changelog.yml)
-![Latest Release](https://img.shields.io/github/v/release/PlatformStackPulse/terraform-atom-molecule-module-template?label=latest%20release&sort=semver)
-![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.6.0-blue?logo=terraform)
-![License](https://img.shields.io/github/license/PlatformStackPulse/terraform-atom-molecule-module-template)
+<!-- Badges -->
+[![CI](https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![Release](https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws/actions/workflows/auto-release.yml/badge.svg)](../../actions/workflows/auto-release.yml)
+[![CodeQL](https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![Changelog](https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws/actions/workflows/changelog.yml/badge.svg)](../../actions/workflows/changelog.yml)
+![Latest Release](https://img.shields.io/github/v/release/PlatformStackPulse/tf-atom-apigateway-domain-name-aws?label=latest%20release&sort=semver)
+![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.11.3-blue?logo=terraform)
+![License](https://img.shields.io/github/license/PlatformStackPulse/tf-atom-apigateway-domain-name-aws)
 
-A production-ready template for creating Terraform modules following the **one module per repository** best practice, with built-in CI/CD, security scanning, testing, documentation generation, and publishing to public registries.
+Terraform **atom** module for an AWS API Gateway custom domain name. It provides the consistent
+[tf-label](https://github.com/PlatformStackPulse/tf-label) naming/tagging interface (`namespace`,
+`stage`, `name`, `enabled`, `tags`, …) so the custom-domain resource can be composed into larger
+molecules and cells with predictable IDs and tags. Follows the **one module per repository**
+convention with built-in CI/CD, security scanning, native testing, and documentation generation.
 
 ## Features
 
+- **tf-label naming** — Deterministic, plan-known IDs (e.g. `eg-test-thing`) via the shared `tf-label` context
+- **`enabled` toggle** — Set `enabled = false` to create nothing (empty ID, no resources)
+- **Normalized tags** — Standard tag map (including a `Name` tag equal to the ID) applied consistently
+- **Context chaining** — Full `context` passthrough for composition into molecules/cells
 - **One Module Per Repo** — Module lives at the root; no nested `modules/` directory
-- **Registry Publishing** — Auto-publish to Terraform Registry, Artifactory, or GitLab on release
-- **Native Terraform Testing** — `terraform test` with mock providers (no external tools)
+- **Native Terraform Testing** — `terraform test` with a mock AWS provider (no external tools)
 - **Security Scanning** — Trivy IaC scanning for HIGH/CRITICAL vulnerabilities
 - **Linting** — TFLint with AWS ruleset (preset "all")
 - **Auto Documentation** — terraform-docs generates README sections on every commit
-- **GitHub Actions CI/CD** — Workflows for the full module lifecycle
+- **GitHub Actions CI/CD** — Format, validate, lint, test, security on every push/PR
 - **Auto Release** — CI passes on main → auto-tag → GitHub Release created
-- **Pre-Commit Hooks** — Format, validate, lint, docs, and security on every commit
-- **Conventional Commits** — Enforced commit message format
-- **Semantic Versioning** — Automated version management and releases
-- **DevContainer** — VS Code remote development ready
+- **Semantic Versioning** — Conventional commits drive automated version management
 
 ## CI Pipeline
 
@@ -77,38 +81,36 @@ See [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) for detailed instructions.
 
 ## Usage
 
-### From GitHub
-
 ```hcl
-module "this" {
-  source = "github.com/PlatformStackPulse/terraform-aws-my-module?ref=v1.0.0"
+module "apigateway_domain_name" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws.git?ref=v1.0.0"
 
-  name        = "my-resource"
-  environment = "dev"
-  namespace   = "myorg"
+  # Required tf-label naming inputs
+  namespace = "eg"
+  stage     = "test"
+  name      = "thing"
 
   tags = {
     Project = "example"
     Owner   = "platform-engineering"
   }
 }
+
+output "domain_id" {
+  value = module.apigateway_domain_name.id # => "eg-test-thing"
+}
 ```
 
-### From Terraform Registry
+To disable the module (create no resources) set `enabled = false`:
 
 ```hcl
-module "this" {
-  source  = "PlatformStackPulse/my-module/aws"
-  version = "~> 1.0"
+module "apigateway_domain_name" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-apigateway-domain-name-aws.git?ref=v1.0.0"
 
-  name        = "my-resource"
-  environment = "dev"
-  namespace   = "myorg"
-
-  tags = {
-    Project = "example"
-    Owner   = "platform-engineering"
-  }
+  enabled   = false
+  namespace = "eg"
+  stage     = "test"
+  name      = "thing"
 }
 ```
 
@@ -312,6 +314,30 @@ No resources.
 |------|-------------|
 | <a name="output_enabled"></a> [enabled](#output\_enabled) | Whether the module is enabled. |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Native `terraform test` unit tests live in [`tests/unit/main_test.tftest.hcl`](tests/unit/main_test.tftest.hcl)
+and run against a **mock AWS provider** (no real AWS calls, no credentials needed). Assertions
+are on plan-known values (the tf-label `id` string, the `enabled` flag, and normalized tags), so
+they are deterministic even under a mock provider.
+
+| Run block | What it verifies |
+|-----------|------------------|
+| `creates_when_enabled` | Module is enabled by default; `id == "eg-test-thing"`; `tags["Name"]` equals the ID |
+| `disabled_creates_nothing` | With `enabled = false`, `enabled` output is `false` and `id` is empty |
+
+Run the tests:
+
+```bash
+terraform init -backend=false
+terraform test -test-directory=tests/unit -verbose
+# or
+make test-unit
+```
+
+Integration tests (real AWS) live in [`tests/integration/`](tests/integration/) and run via
+`terraform test -test-directory=tests/integration` (`make test-integration`).
 
 ## Learning Materials
 
